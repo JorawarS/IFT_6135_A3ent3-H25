@@ -130,7 +130,8 @@ class Trainer:
             for t_ in tqdm(range(n_steps)):
                 
                 # TODO: Sample x_t 
-                raise NotImplementedError
+                t = torch.tensor([n_steps - t_ - 1] * x.shape[0], device=x.device)  
+                x = self.diffusion.p_sample(x, t) 
             
                 if self.args.nb_save is not None and t_ in saving_steps:
                     print(f"Showing/saving samples from epoch {self.current_epoch}")
@@ -172,6 +173,7 @@ class Trainer:
         """
         Generate multiple images and return intermediate steps of the diffusion process
         Args:
+            model: The trained diffusion model
             n_samples: Number of images to generate
             img_size: Size of the images (assumes square images)
             every_n_steps: Capture intermediate result every n steps
@@ -195,7 +197,10 @@ class Trainer:
         for step in tqdm(range(1, n_steps+1, 1)):
             # TODO: Generate intermediate steps
             # Hint: if GPU crashes, it might be because you accumulate unused gradient ... don't forget to remove gradient
-            raise NotImplementedError
+            # Perform a single reverse diffusion step
+            t = torch.tensor([n_steps - step] * x.shape[0], device=x.device)
+            with torch.no_grad():
+                x = self.diffusion.p_sample(x, t, set_seed=set_seed) 
         
             # Store intermediate result if it's a step we want to display
             if step in steps_to_show:
