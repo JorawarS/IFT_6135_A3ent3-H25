@@ -89,8 +89,6 @@ class Trainer:
                 scaler.scale(loss).backward()
                 scaler.step(self.optimizer)
                 scaler.update()
-                loss.backward()
-                self.optimizer.step()
                 self.ema.step_ema(self.ema_model, self.eps_model)
 
                 running_loss += loss.item()
