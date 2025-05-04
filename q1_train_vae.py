@@ -178,32 +178,86 @@ if __name__ == "__main__":
         print('====> Test set loss: {:.4f}'.format(test_loss))
 
         # Latent Traversal
-        with torch.no_grad():
-            # Sample a latent vector z from the standard Gaussian distribution
-            z = torch.randn(1, 20).to(device)
-            latent_dim = 20  # Number of dimensions in the latent space
-            num_samples = 30  # Number of samples to generate for each dimension
-            epsilon = 0.5 # Step size for perturbation
+        if not os.path.exists('results/latent_traversal.png'):
+            with torch.no_grad():
+                # Sample a latent vector z from the standard Gaussian distribution
+                z = torch.randn(1, 20).to(device)
+                latent_dim = 20  # Number of dimensions in the latent space
+                num_samples = 30  # Number of samples to generate for each dimension
+                epsilon = 0.5 # Step size for perturbation
+                
+                # Create a grid to store the generated images
+                fig, axes = plt.subplots(latent_dim, num_samples, figsize=(num_samples, latent_dim))
+                for i in range(latent_dim):
+                    for j in range(num_samples):
+                        # Perturb the i-th dimension of z
+                        z_perturbed = z.clone()
+                        z_perturbed[0, i] += epsilon * j
+                        
+                        # Decode the perturbed latent vector
+                        generated_image = model.decode(z_perturbed).view(28, 28).cpu().numpy()
+                        
+                        # Plot the generated image
+                        axes[i, j].imshow(generated_image, cmap='gray')
+                        axes[i, j].axis('off')
             
-            # Create a grid to store the generated images
-            fig, axes = plt.subplots(latent_dim, num_samples, figsize=(num_samples, latent_dim))
-            for i in range(latent_dim):
-                for j in range(num_samples):
-                    # Perturb the i-th dimension of z
-                    z_perturbed = z.clone()
-                    z_perturbed[0, i] += epsilon * j
+                plt.suptitle("Latent Traversals", y=1.001)  # Adjust the y position to prevent cutoff
+                plt.tight_layout()
+                plt.savefig('results/latent_traversal.png', bbox_inches='tight')  # Ensure everything fits in the saved image
+                plt.show()
+        if not os.path.exists('results/interpolation_comparison.png'):
+            with torch.no_grad():
+                # Sample two random points in the latent space
+                z0 = torch.randn(1, 20).to(device)
+                z1 = torch.randn(1, 20).to(device)
+                
+                # Decode them to get the corresponding images
+                x0 = model.decode(z0)
+                x1 = model.decode(z1)
+                
+                # Number of interpolation steps
+                steps = 11  # For α = 0, 0.1, 0.2, ..., 1.0
+                
+                # Create figure with extra space on the left for labels
+                fig = plt.figure(figsize=(20, 5))
+                grid = plt.GridSpec(2, steps+1, width_ratios=[0.5] + [1]*steps)
+
+                # Create axes for images
+                axes = [[None for _ in range(steps)] for _ in range(2)]
+
+                # Create separate axes for labels
+                label_axes = [fig.add_subplot(grid[i, 0]) for i in range(2)]
+                for i, ax in enumerate(label_axes):
+                    label = 'Latent Space\nInterpolation' if i == 0 else 'Pixel Space\nInterpolation'
+                    ax.text(0.5, 0.5, label, ha='center', va='center', fontsize=12)
+                    ax.axis('off')
+
+                # Create axes for images
+                for i in range(2):
+                    for j in range(steps):
+                        axes[i][j] = fig.add_subplot(grid[i, j+1])
+
+                for i, alpha in enumerate(torch.linspace(0, 1, steps)):
+                    # (a) Interpolation in latent space: z'α = αz0 + (1-α)z1
+                    z_alpha = alpha * z0 + (1 - alpha) * z1
+                    x_alpha_latent = model.decode(z_alpha).view(28, 28).cpu().numpy()
                     
-                    # Decode the perturbed latent vector
-                    generated_image = model.decode(z_perturbed).view(28, 28).cpu().numpy()
+                    # (b) Interpolation in data space: x̂α = αx0 + (1-α)x1
+                    x_alpha_pixel = (alpha * x0 + (1 - alpha) * x1).view(28, 28).cpu().numpy()
                     
-                    # Plot the generated image
-                    axes[i, j].imshow(generated_image, cmap='gray')
-                    axes[i, j].axis('off')
-        
-            plt.suptitle("Latent Traversals", y=1.001)  # Adjust the y position to prevent cutoff
-            plt.tight_layout()
-            plt.savefig('results/latent_traversal.png', bbox_inches='tight')  # Ensure everything fits in the saved image
-            plt.show()
+                    # Plot results
+                    axes[0][i].imshow(x_alpha_latent, cmap='gray')
+                    axes[0][i].axis('off')
+                    axes[0][i].set_title(f'α={alpha:.1f}')
+                    
+                    axes[1][i].imshow(x_alpha_pixel, cmap='gray')
+                    axes[1][i].axis('off')
+
+                plt.tight_layout()
+                plt.savefig('results/interpolation_comparison.png')
+                plt.show()
+                
+                print("Interpolation comparison saved to results folder")
 
 
 
