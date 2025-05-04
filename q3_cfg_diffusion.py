@@ -131,7 +131,9 @@ class CFGDiffusion():
         eps_theta = self.eps_model(z_lambda_t, labels)
 
         #TODO: compute loss
-        loss = F.mse_loss(noise, eps_theta)
+        loss = (eps_theta - noise) ** 2
+        loss = loss.sum(dim=dim)
+        loss = loss.mean()
 
     
         return loss

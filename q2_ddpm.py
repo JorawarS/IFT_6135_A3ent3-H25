@@ -87,7 +87,10 @@ class DenoiseDiffusion():
         eps_theta = self.eps_model(x_t, t)
 
         # Compute loss
-        loss = F.mse_loss(noise,eps_theta)
+        loss = (eps_theta - noise) ** 2
+        loss = loss.sum(dim=dim)
+        loss = loss.mean()
+        
 
         return loss
 
